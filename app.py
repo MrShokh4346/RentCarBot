@@ -3,8 +3,7 @@ import logging
 import sys
 import os
 from dotenv.main import load_dotenv
-
-
+# from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
@@ -30,12 +29,9 @@ url_by_id = 'https://rentcar.pythonanywhere.com/rent/v1/order/'
 async def callbacks_num(callback: types.CallbackQuery):
     call = callback.data.split("_")[1]
     status = True if call.split(":")[1] == 't' else False
-    print(status)
-    print(call)
-    print(url_by_id+call.split(":")[0])
     res = requests.put(url_by_id+call.split(":")[0], json={"status":status})
     if res.status_code == 204:
-        await callback.answer(text="Updated!",
+        await callback.answer(text="O'zgartirildi!",
         show_alert=True
         )
     else:
@@ -51,52 +47,67 @@ async def command_start_handler(message: Message) -> None:
     """
     kb = [
     [
-        types.KeyboardButton(text="Confirmed orders"),
-        types.KeyboardButton(text="Don't confirmed orders")
+        types.KeyboardButton(text="Tasdiqlangan buyurtmalar"),
+        types.KeyboardButton(text="Tasdiqlanmagan buyurtmalar")
     ],
     ]
     keyboard = types.ReplyKeyboardMarkup(
         keyboard=kb,
-        resize_keyboard=True,
-        input_field_placeholder="Select order status"
+        resize_keyboard=True
     )
-    await message.answer("Select order status", reply_markup=keyboard)
+    await message.answer("Buyurtmalar statusini tanlang", reply_markup=keyboard)
 
 
-@dp.message(lambda message: message.text.lower() == "don't confirmed orders")
+@dp.message(lambda message: message.text.lower() == "tasdiqlanmagan buyurtmalar")
 async def get_dont_confirmed_orders(message: types.Message) -> None:
     res = requests.get(url+"?status=0")
     orders = json.loads(res.content)
     if len(orders) == 0:
-        await message.answer("Nothing found")
+        await message.answer("Hechnarsa topilmadi")
     for order in orders:
-        resp = f" id : {order['id']}\n Customer name : {order['customer_name']}\n Contact number : {order['contact_number']}\n Brand : {order['car_brand']}\n Model : {order['car_model']}\n Child sit : {order['child_sit']}\n Delivery : {order['delivery']}\n"
-        resp += f" Pick-up date : {order['from_date']}\n Drop-off date : {order['to_date']}\n Pick-up location : {order['from_destination']}\n Drop-off location : {order['to_destination']}\n Status : {order['status']}"
-        button = [[types.InlineKeyboardButton(text="Update status", callback_data=f"obj_{order['id']}:t")]]
+        resp = f" <b>Buyutmachi</b> : {order['customer_name']}\n"
+        resp += f"    Aloqa uchun: {order['contact_number']}\n"
+        resp += f"<b>Avtomobil</b> : {order['car_brand']} {order['car_model']}\n"
+        resp += f"    Xavfsizlik orindigi : {'kerak' if order['child_sit']==True else 'kerak emas'}\n"
+        resp += f"    Yetkazib berish : {'kerak' if order['delivery']==True else 'kerak emas'}\n"
+        resp += f"    Olib ketish sanasi : {order['from_date']}\n" if order.get('from_date') is not None else ''
+        resp += f"    Qaytarish sanasi : {order['to_date']}\n" if order.get('to_date') is not None else ''
+        resp += f"    Olib ketish joyi : {order['from_destination']}\n" if order.get('from_destination') is not None else ''
+        resp += f"    Qaytarish joyi : {order['to_destination']}\n" if order.get('to_destination') is not None else ''
+        resp += f"    Buyurtma holati : {'tasdiqlandi' if order['status']==True else 'tasdiqlanmadi'}"
+        button = [[types.InlineKeyboardButton(text="Buyurtma holatini o'zgartirish", callback_data=f"obj_{order['id']}:t")]]
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=button)
         await message.answer(resp, reply_markup=keyboard)
 
 
-@dp.message(lambda message: message.text.lower() == 'confirmed orders')
+@dp.message(lambda message: message.text.lower() == 'tasdiqlangan buyurtmalar')
 async def get_confirmed_orders(message: types.Message) -> None:
     res = requests.get(url+"?status=1")
     orders = json.loads(res.content)
     if len(orders) == 0:
-        await message.answer("Nothing found")
+        await message.answer("Hechnarsa topilmadi")
     for order in orders:
-        resp = f" id : {order['id']}\n Customer name : {order['customer_name']}\n Contact number : {order['contact_number']}\n Brand : {order['car_brand']}\n Model : {order['car_model']}\n Child sit : {order['child_sit']}\n Delivery : {order['delivery']}\n"
-        resp += f" Pick-up date : {order['from_date']}\n Drop-off date : {order['to_date']}\n Pick-up location : {order['from_destination']}\n Drop-off location : {order['to_destination']}\n Status : {order['status']}"
-        button = [[types.InlineKeyboardButton(text="Update status", callback_data=f"obj_{order['id']}:f")]]
+        resp = f" <b>Buyutmachi</b> : {order['customer_name']}\n"
+        resp += f"    Aloqa uchun: {order['contact_number']}\n"
+        resp += f"<b>Avtomobil</b> : {order['car_brand']} {order['car_model']}\n"
+        resp += f"    Xavfsizlik orindigi : {'kerak' if order['child_sit']==True else 'kerak emas'}\n"
+        resp += f"    Yetkazib berish : {'kerak' if order['delivery']==True else 'kerak emas'}\n"
+        resp += f"    Olib ketish sanasi : {order['from_date']}\n" if order.get('from_date') is not None else ''
+        resp += f"    Qaytarish sanasi : {order['to_date']}\n" if order.get('to_date') is not None else ''
+        resp += f"    Olib ketish joyi : {order['from_destination']}\n" if order.get('from_destination') is not None else ''
+        resp += f"    Qaytarish joyi : {order['to_destination']}\n" if order.get('to_destination') is not None else ''
+        resp += f"    Buyurtma holati : {'tasdiqlandi' if order['status']==True else 'tasdiqlanmadi'}"
+        button = [[types.InlineKeyboardButton(text="Buyurtma holatini o'zgartirish", callback_data=f"obj_{order['id']}:f")]]
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=button)
         await message.answer(resp, reply_markup=keyboard)
 
 
 async def main() -> None:
     # Initialize Bot instance with a default parse mode which will be passed to all API calls
-    bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
-    # And the run events dispatching
+    # session = AiohttpSession(proxy='http://proxy.server:3128')
+    # bot = Bot(token=TOKEN, session=session, parse_mode=ParseMode.HTML)
+    bot = Bot(token=TOKEN, parse_mode=ParseMode.HTML)
     await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
